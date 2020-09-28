@@ -1,0 +1,176 @@
+---
+title: "Electrofishing project update"
+author: 
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+
+library(tidyverse)
+library(lubridate)
+library(gt)
+library(sf)
+library(mapview)
+library(DBI)
+library(googledrive)
+
+theme_set(theme_bw())
+mapviewOptions(basemaps = c("Stamen.Terrain", "Esri.WorldImagery", "OpenTopoMap"))
+
+```
+
+```{r config}
+config <- config::get("example_config")
+
+```
+
+```{r}
+
+#-------------------------------
+# Google Drive auth and io
+#-------------------------------
+
+# -----Authenticate to google drive-----
+
+drive_auth(email = config$email)
+
+
+# ----- Locate database -----
+
+el_db <- drive_get(paste0(config$db_path, "copy_123a.sqlite"))
+
+tmp <- tempfile(fileext = ".sqlite")
+drive_download(el_db, path = tmp, overwrite = TRUE)
+
+con <-  dbConnect(RSQLite::SQLite(), tmp)
+dbListTables(con)
+
+
+```
+
+
+
+
+```{r}
+# Select year of interest
+
+yoi <- 2020
+
+```
+
+```{r data-io}
+site <- tbl(con, "site") %>%
+  filter(year == yoi) %>% 
+  collect() %>% 
+  mutate_at(vars(ends_with("time")), as.POSIXct)
+fish <- tbl(con, "fish") %>%
+  semi_join(site, copy = TRUE) %>% 
+  collect() %>% 
+  mutate_at(vars(ends_with("time")), as.POSIXct)
+
+dbDisconnect(con)
+```
+
+## Summary
+
+Add general observations here, start dates, end dates, river flow.  This can be accomplished programaticly or by hand
+
+you can also add pictures and captions...
+
+```![caption](c:/path_to_image.JPG)```
+
+You need to use absolute filepaths...
+
+___
+
+## CPUE table
+
+```{r cpue}
+# Generate cpue DF, all species aggregated to pass and reach
+# Join to UCRBtools tables for better display
+f_cpue <- fish %>% 
+  left_join(site, by = "site_id") %>% 
+  group_by(site_id, species, reach, pass, el_sec) %>% 
+  summarise(fish_count = n(),
+            .groups = "drop") %>% 
+  complete(nesting(site_id, reach, pass, el_sec),
+           nesting(species),
+           fill = list(fish_count = 0)) %>% 
+  group_by(pass, reach, species) %>% 
+  summarise(effort = round(sum(el_sec/3600),2),
+            catch = sum(fish_count),
+            cpue = round(catch/effort, 2),
+            .groups = "drop")
+
+# gt(f_cpue) %>% 
+#   tab_header("Catch-per-unit-effort, all species, by reach and pass")
+
+```
+
+```{r}
+f_cpue %>% 
+  filter(species == "SM") %>% 
+  group_by(reach) %>% 
+  summarise(effort = sum(effort, na.rm = TRUE),
+            catch = sum(catch, na.rm = TRUE),
+            cpue = round(catch / effort, 2)) %>% 
+  gt() %>% 
+  tab_header("Catch-per-unit-effort - smallmouth bass by reach, 2020")
+```
+
+___
+
+## Length Frequency 
+```{r length-frequency}
+lf <- fish %>% 
+  left_join(select(site, site_id, pass, reach)) %>% 
+  filter(species == "SM") 
+
+lf %>% 
+  ggplot() +
+  geom_freqpoly(aes(x = tot_length, color = reach), lwd = 2) +
+  labs(title = "Length frequency for smallmouth bass by reach, 2020",
+       x = "Total length (mm)",
+       y = "Number of smallmouth bass")
+
+
+```
+
+```{r}
+lf %>% 
+  group_by(reach) %>% 
+  summarise(mean_tl = round(mean(tot_length, na.rm = TRUE), 2),
+            min_tl = min(tot_length, na.rm = TRUE),
+            max_tl = max(tot_length, na.rm = TRUE),
+            sd_tl = sd(tot_length, na.rm = TRUE),
+            .groups = "drop") %>% 
+  gt() %>% 
+  tab_header(title = "Smallmouth bass total length stats by reach, 2020")
+```
+
+___
+
+## Spatial data display
+
+```{r mapview}
+fish %>% 
+  filter(!is.na(epsg)) %>% 
+  left_join(select(site, site_id, pass)) %>% 
+  filter(species == "SM") %>% 
+  group_by(rmi, species, pass, epsg) %>% 
+  summarise(fish_count = n(),
+            loc_x = mean(loc_x),
+            loc_y = mean(loc_y),
+            .groups = "drop") %>% 
+  st_as_sf(coords = c("loc_x", "loc_y"), crs = .$epsg[1]) %>% 
+  
+  
+  mapview(cex = "fish_count", col.regions = "green")
+
+```
+
+___
+
