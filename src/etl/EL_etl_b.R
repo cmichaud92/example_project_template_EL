@@ -18,7 +18,7 @@ library(googlesheets4)
 # proof_data <- "Exact file name as it appears in Google drive"
 
 # proof_data <- "final_example_1"
- proof_data <- "final_example_2"
+ proof_data <- "final_example_1"
 # proof_data <- "final_example_3"
 
 

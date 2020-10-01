@@ -30,7 +30,7 @@ config <- config::get("example_config")
 
 # Data set name: Create a unique data set name (use the directory name)
 # data_id <- "example_1"
- data_id <- "example_2"
+ data_id <- "example_1"
 
 # Name of directory containing target dataset (local)
 # dir_name <- "dbf_123a_1/"
@@ -84,12 +84,14 @@ dbListTables(con)
 #----- Scrape 'max' site_id  from db and increment by 1 ------
 
 # Adds 1 to the last sample number currently in the database
-start_num <- 1 +
-  (tbl(con, "site") %>%
-  pull(site_id) %>%
-  max() %>%
-  str_sub(start = -3) %>%
-  as.integer())
+start_num <- 1
+
+# start_num <- 1 +
+#   (tbl(con, "site") %>%
+#   pull(site_id) %>%
+#   max() %>%
+#   str_sub(start = -3) %>%
+#   as.integer())
 
 dbDisconnect(con)
 

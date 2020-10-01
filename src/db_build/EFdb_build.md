@@ -1,6 +1,6 @@
 ---
 title: "SQLite db build: Data Management Example"
-date: "27 September, 2020"
+date: "28 September, 2020"
 output:
   html_document:
     keep_md: true
@@ -461,9 +461,9 @@ drive_upload(media = tmp_db,
 
 ```
 ## Local file:
-##   * C:\Users\cmichaud\AppData\Local\Temp\1\Rtmpq6OseO\file30ac327f30dc.sqlite
+##   * C:\Users\cmichaud\AppData\Local\Temp\1\RtmpcZ4oTz\filed7c23f223f3.sqlite
 ## uploaded into Drive file:
-##   * example_123a.sqlite: 1yTgcetIr-ALDlLde2CBLf5HFPPEM-aVx
+##   * example_123a.sqlite: 1S2HRbSbtGwxljLiqCUztr1fBzbngvhNC
 ## with MIME type:
 ##   * application/octet-stream
 ```
