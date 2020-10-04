@@ -22,14 +22,15 @@ library(dbplyr)
 library(tidyr)
 library(lubridate)
 library(DBI)
+library(fs)
 library(UCRBtools)
 library(waterData)
 library(googledrive)
 library(googlesheets4)
 
 
-config <- config::get("example_config")
-
+config <- config::get(value = "example_config",
+                      file = "T:/My Drive/data_mgt/projects/config.yml")
 #----------------------------------------------------
 # User defined parameters
 #----------------------------------------------------
@@ -45,21 +46,21 @@ yoi <- 2020
 
 # ----- Authenticate to google drive -----
 
-drive_auth(email = config$email)
+#drive_auth(email = config$email)
 
 
 # ----- Locate database -----
 
-el_db <- drive_get(paste0(config$db_path, config$db_name))
-
-tmp <- tempfile(fileext = ".sqlite")
-drive_download(el_db, path = tmp, overwrite = TRUE)
+# el_db <- drive_get(paste0(config$db_path, config$db_name))
+#
+# tmp <- tempfile(fileext = ".sqlite")
+# drive_download(el_db, path = tmp, overwrite = TRUE)
 
 
 # ----- Connect to database -----
 
-con <-  dbConnect(RSQLite::SQLite(), tmp)
-# dbListTables(con)
+con <-  dbConnect(RSQLite::SQLite(), paste0(config$root_path, config$db_name))
+ dbListTables(con)
 
 
 
@@ -281,68 +282,68 @@ dbDisconnect(con)
 # Check for/create data products directory
 #-----------------------------------------
 
-# Path to data products directory
-main_dir <- "./output/"
-sub_dir <- paste0("data_products_", config$proj, "_",yoi,  "/")
-d_prod_dir <- paste0(main_dir, sub_dir)
-
-# Determine if output directory exists
-dir.exists(main_dir)                               # If true continue, if false STOP
-
-# If not create it
-ifelse(!dir.exists(file.path(main_dir)), dir.create(file.path(main_dir)), FALSE)
-
-# Determine if the sub-directory exists, if not create it
-ifelse(!dir.exists(file.path(d_prod_dir)), dir.create(file.path(d_prod_dir)), FALSE)
+# # Path to data products directory
+# main_dir <- "./output/"
+# sub_dir <- paste0("data_products_", config$proj, "_",yoi,  "/")
+# d_prod_dir <- paste0(main_dir, sub_dir)
+#
+# # Determine if output directory exists
+# dir.exists(main_dir)                               # If true continue, if false STOP
+#
+# # If not create it
+# ifelse(!dir.exists(file.path(main_dir)), dir.create(file.path(main_dir)), FALSE)
+#
+# # Determine if the sub-directory exists, if not create it
+# ifelse(!dir.exists(file.path(d_prod_dir)), dir.create(file.path(d_prod_dir)), FALSE)
 
 
 #--------------------------
 # Write datasets to .csv
 #--------------------------
 
+tmp <- tempdir()
+
 write.csv(site_tbl,
-          file = paste0(d_prod_dir, paste(config$proj, yoi, "site", sep = "_"), ".csv"),
+          file = paste0(tmp, "/", paste(config$proj, yoi, "site", sep = "_"), ".csv"),
           na = "NA",
           row.names = FALSE)
 
 write.csv(fish_tbl,
-          file = paste0(d_prod_dir, paste(config$proj, yoi, "fish", sep = "_"), ".csv"),
+          file = paste0(tmp, "/",paste(config$proj, yoi, "fish", sep = "_"), ".csv"),
           na = "NA",
           row.names = FALSE)
 
 write.csv(floy_tbl,
-          file = paste0(d_prod_dir, paste(config$proj, yoi, "floy", sep = "_"), ".csv"),
+          file = paste0(tmp, "/",paste(config$proj, yoi, "floy", sep = "_"), ".csv"),
           na = "NA",
           row.names = FALSE)
 
 
 write.csv(waterdata,
-          file = paste0(d_prod_dir, paste(config$proj, yoi, "usgswater", sep = "_"), ".csv"),
+          file = paste0(tmp, "/",paste(config$proj, yoi, "usgswater", sep = "_"), ".csv"),
           na = "NA",
           row.names = FALSE)
 
 write.csv(cpue,
-          file = paste0(d_prod_dir, paste(config$proj, yoi, "cpue", sep = "_"), ".csv"),
+          file = paste0(tmp, "/",paste(config$proj, yoi, "cpue", sep = "_"), ".csv"),
           na = "NA",
           row.names = FALSE)
 
 write.csv(cpue_ls,
-          file = paste0(d_prod_dir, paste(config$proj, yoi, "cpue_ls", sep = "_"), ".csv"),
+          file = paste0(tmp, "/",paste(config$proj, yoi, "cpue_ls", sep = "_"), ".csv"),
           na = "NA",
           row.names = FALSE)
 
 
-zip_files <- list.files(d_prod_dir,
+zip_files <- list.files(tmp,
                         pattern = ".csv$",
                         full.names = TRUE)
 
-zip(zipfile = paste0(main_dir,"data_products_", config$proj,"_", yoi),
+zip(zipfile = paste0(config$releases_path, "data_products_", config$proj,"_", yoi),
     files = zip_files,
     flags = " a -tzip",
     zip = "C:\\Program Files\\7-Zip\\7z")
 
-drive_upload(media = paste0(main_dir, "data_products_", config$proj, "_", yoi, ".zip"),
-             path = config$data_release)
 
 ## End
 

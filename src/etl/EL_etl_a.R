@@ -22,22 +22,24 @@ source("./src/fun/dp_ef_qcfx_csv.R")
 # build "exclude"
 `%!in%` <- Negate(`%in%`)
 
-config <- config::get("example_config")
+config <- config::get(value = "example_config",
+                      file = "T:/My Drive/data_mgt/projects/config.yml")
 
 #------------------------
 # Required variables
 #------------------------
 
-# Data set name: Create a unique data set name (use the directory name)
+# Data set name: Use the directory name to create data identifier
+ data_id <- "2020_example_2"
+
 # data_id <- "example_1"
- data_id <- "example_1"
 
 # Name of directory containing target dataset (local)
 # dir_name <- "dbf_123a_1/"
- dir_name <- paste0(data_id, "/")
+# dir_name <- paste0(data_id, "/")
 
 # Data year (should be current year)
- dat_yr <- year(now())
+ data_yr <- year(now())
 
 
 #-------------------------------
@@ -50,50 +52,41 @@ drive_auth(email = config$email)
 
 gs4_auth(token = drive_token())
 
-# ----- Change working dir -----
-proj_wd <- getwd()
-dbf_dir <- tempdir()
 
-# ----- Locate .dbf files and download -----
-
-#raw_dat <- drive_get(config$data_dbf)
-#tmp_dat <- tempdir()
-
-dbf_files <- drive_ls(path = paste0(config$data_dbf, dir_name))
-setwd(dbf_dir)
-walk(dbf_files$id, ~ drive_download(as_id(.x), overwrite = TRUE))
-setwd(proj_wd)
-
-
-# ----- Locate database -----
-
-el_db <- drive_get(paste0(config$db_path, config$db_name))
-
-
-tmp_db <- tempfile(fileext = ".sqlite")
-drive_download(el_db, path = tmp_db, overwrite = TRUE)
-
+#------------------------------
+# Fetch starting site_id
+# from the database
+#------------------------------
 
 # ----- Connect to database -----
 
-con <-  dbConnect(RSQLite::SQLite(), tmp_db)
+con <-  dbConnect(RSQLite::SQLite(), paste0(config$root_path, config$db_name))
 dbListTables(con)
-
 
 
 #----- Scrape 'max' site_id  from db and increment by 1 ------
 
 # Adds 1 to the last sample number currently in the database
-start_num <- 1
+#start_num <- 1
 
-# start_num <- 1 +
-#   (tbl(con, "site") %>%
-#   pull(site_id) %>%
-#   max() %>%
-#   str_sub(start = -3) %>%
-#   as.integer())
+start_num <- 1 +
+  (tbl(con, "site") %>%
+  pull(site_id) %>%
+  max() %>%
+  str_sub(start = -3) %>%
+  as.integer())
 
 dbDisconnect(con)
+
+#-------------------------------
+# Import field data (dbf) from local source
+#-------------------------------
+
+# This creates a large list, each dbf table is a separate list element
+
+data <- dbf_io(file_path_in = paste0(config$dbf_path, data_id)) %>%
+  map(rename_all, tolower) %>%
+  compact()
 
 
 #-------------------------------
@@ -105,22 +98,13 @@ dbDisconnect(con)
 
 meta <- tibble(
   project_code = config$proj,
-  year = dat_yr,
+  year = data_yr,
   principal_fname = config$pi_fname,
   principal_lname = config$pi_lname,
   agency = config$agency,
   data_type = config$data_type
 )
 
-#-------------------------------
-# Import field data (dbf) from local source
-#-------------------------------
-
-# This creates a large list, each dbf table is a separate list element
-
-data <- dbf_io(file_path_in = dbf_dir) %>%
-  map(rename_all, tolower) %>%
-  compact()
 
 #------------------------------
 # Extract data from list
@@ -302,7 +286,7 @@ ck_vial <- vial_tmp
 #------------------------------
 
 gs4_create(
-  name = paste("raw", data_id, sep = "_"),
+  name = paste(data_id, "raw", sep = "_"),
   sheets = list(meta = meta,
                 stats = ck_stat,
                 ck_site = ck_site,
@@ -317,7 +301,7 @@ gs4_create(
 # This moves data to 'project_template_test/' in google drive. Otherwise sheets is
 # created in the google drive root directory
 
-drive_mv(paste("raw", data_id, sep = "_"),
-         path = config$db_path)
+drive_mv(paste(data_id, "raw", sep = "_"),
+         path = gsub("^.*?Drive/","",config$root_path))
 
 ## End

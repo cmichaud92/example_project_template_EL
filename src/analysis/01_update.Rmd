@@ -23,8 +23,8 @@ mapviewOptions(basemaps = c("Stamen.Terrain", "Esri.WorldImagery", "OpenTopoMap"
 ```
 
 ```{r config}
-config <- config::get("example_config")
-
+config <- config::get(value = "example_config",
+                      file = "T:/My Drive/data_mgt/projects/config.yml")
 ```
 
 ```{r}
@@ -35,17 +35,13 @@ config <- config::get("example_config")
 
 # -----Authenticate to google drive-----
 
-drive_auth(email = config$email)
+#drive_auth(email = config$email)
 
 
-# ----- Locate database -----
+# ----- Estab db connection -----
 
-el_db <- drive_get(paste0(config$db_path, "copy_123a.sqlite"))
 
-tmp <- tempfile(fileext = ".sqlite")
-drive_download(el_db, path = tmp, overwrite = TRUE)
-
-con <-  dbConnect(RSQLite::SQLite(), tmp)
+con <-  dbConnect(RSQLite::SQLite(), paste0(config$root_path, config$db_name))
 dbListTables(con)
 
 

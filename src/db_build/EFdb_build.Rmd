@@ -13,10 +13,11 @@ library(dbplyr)
 library(RSQLite)
 library(googledrive)
 
-tmp_db <- tempfile(fileext = ".sqlite")
-con <-  dbConnect(RSQLite::SQLite(), tmp_db)  ## Change database name!!!
 
-config <- config::get("example_config")
+config <- config::get(value = "example_config", 
+                      file = "T:/My Drive/data_mgt/projects/config.yml")
+
+con <-  dbConnect(RSQLite::SQLite(), paste0(config$root_path, config$db_name))  ## db name declaired in config
 
 knitr::opts_chunk$set(echo = TRUE,
                       connection = "con")
@@ -412,12 +413,13 @@ CREATE VIEW STReaMS_ntf (
 
 
 ```{r}
+# Delete if file stream functions as expected
 
-drive_auth(email = config$email)
-
-drive_upload(media = tmp_db,
-             path = config$db_path,
-             name = config$db_name)
-
-dbDisconnect(con)
+# drive_auth(email = config$email)
+# 
+# drive_upload(media = tmp_db,
+#              path = config$db_path,
+#              name = config$db_name)
+# 
+# dbDisconnect(con)
 ```

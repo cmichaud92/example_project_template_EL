@@ -1,6 +1,6 @@
 ---
 title: "SQLite db build: Data Management Example"
-date: "28 September, 2020"
+date: "04 October, 2020"
 output:
   html_document:
     keep_md: true
@@ -452,22 +452,13 @@ CREATE VIEW STReaMS_ntf (
 
 
 ```r
-drive_auth(email = config$email)
+# Delete if file stream functions as expected
 
-drive_upload(media = tmp_db,
-             path = config$db_path,
-             name = config$db_name)
-```
-
-```
-## Local file:
-##   * C:\Users\cmichaud\AppData\Local\Temp\1\RtmpcZ4oTz\filed7c23f223f3.sqlite
-## uploaded into Drive file:
-##   * example_123a.sqlite: 1S2HRbSbtGwxljLiqCUztr1fBzbngvhNC
-## with MIME type:
-##   * application/octet-stream
-```
-
-```r
-dbDisconnect(con)
+# drive_auth(email = config$email)
+# 
+# drive_upload(media = tmp_db,
+#              path = config$db_path,
+#              name = config$db_name)
+# 
+# dbDisconnect(con)
 ```

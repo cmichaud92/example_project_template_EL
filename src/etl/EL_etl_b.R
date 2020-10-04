@@ -5,6 +5,7 @@
 
 library(tidyverse)
 library(lubridate)
+library(fs)
 library(DBI)
 library(googledrive)
 library(googlesheets4)
@@ -17,15 +18,16 @@ library(googlesheets4)
 # Name of google sheets document containing PROOFED data to upload
 # proof_data <- "Exact file name as it appears in Google drive"
 
-# proof_data <- "final_example_1"
- proof_data <- "final_example_1"
-# proof_data <- "final_example_3"
+data_id <- "2020_example_3"
 
+proof_data <- paste(data_id, "final",  sep = "_")
+raw_data <- paste(data_id, "raw", sep = "_")
 
 #-------------------------------
 # Fetch config
 #-------------------------------
-config <- config::get("example_config")
+ config <- config::get(value = "example_config",
+                       file = "T:/My Drive/data_mgt/projects/config.yml")
 
 #-------------------------------
 # Google Drive auth and io
@@ -46,14 +48,10 @@ gs4_auth(token = drive_token())
 sets <- drive_get(proof_data)
 
 
-#-----Locate database-----
+#-----Connect to database-----
 
-el_db <- drive_get(paste0(config$db_path, config$db_name))
 
-tmp <- tempfile(fileext = ".sqlite")
-drive_download(el_db, path = tmp, overwrite = TRUE)
-
-con <-  dbConnect(RSQLite::SQLite(), tmp)
+con <-  dbConnect(RSQLite::SQLite(), paste0(config$root_path, config$db_name))
 dbListTables(con)
 
 # dbDisconnect(con)
@@ -129,20 +127,24 @@ dbWriteTable(con, name = "pittag", value = pit, append = TRUE)
 dbWriteTable(con, name = "floytag", value = floy, append = TRUE)
 
 
-# Archive old database version in googledrive
-drive_mv(el_db, path = paste0(config$db_arch,
-                              "arch_",
-                              format(as.Date(Sys.Date()), "%Y%m%d"),
-                              "_",
-                              config$db_name))
-
-# Upload the updated database version to googledrive
-drive_upload(media = tmp,
-             path = config$db_path,
-             name = config$db_name)
-
 # Disconnect
-
 dbDisconnect(con)
+
+
+# Create backup database and copy to archive
+file.copy(from = paste0(config$root_path, config$db_name),
+          to = paste0(config$arch_path, "database/",format(as.Date(Sys.Date()), "%Y%m%d"),
+                      "_", "uid-", u_id, "_", config$db_name),
+          overwrite = TRUE)
+
+# Move QC googlesheets to to archive
+file_move(path = paste0(config$root_path, raw_data, ".gsheet"),
+          new_path = paste0(config$arch_path, "data_qaqc/",
+                            raw_data, ".gsheet"))
+
+file_move(path = paste0(config$root_path, proof_data, ".gsheet"),
+          new_path = paste0(config$arch_path, "data_qaqc/",
+                            proof_data, ".gsheet"))
+
 
 ## End
