@@ -1,6 +1,6 @@
 ---
 title: "SQLite db build: Data Management Example"
-date: "04 October, 2020"
+date: "05 October, 2020"
 output:
   html_document:
     keep_md: true

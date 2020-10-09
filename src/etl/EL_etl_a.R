@@ -30,7 +30,7 @@ config <- config::get(value = "example_config",
 #------------------------
 
 # Data set name: Use the directory name to create data identifier
- data_id <- "2020_example_2"
+ data_id <- "2020_example_1"
 
 # data_id <- "example_1"
 
